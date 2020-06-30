@@ -511,6 +511,9 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) {
 									lag = -1
 								} else {
 									lag = offset - offsetFetchResponseBlock.Offset
+									if lag < 0 {
+										lag = 0
+									}
 									lagSum += lag
 								}
 								ch <- prometheus.MustNewConstMetric(
