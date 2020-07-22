@@ -45,6 +45,11 @@ var (
 	consumergroupLagSum                *prometheus.Desc
 	consumergroupLagZookeeper          *prometheus.Desc
 	consumergroupMembers               *prometheus.Desc
+	consumergroupState                 *prometheus.Desc
+)
+
+var (
+	states = [...]string{"Dead", "CompletingRebalance", "Empty", "PreparingRebalance", "Stable"}
 )
 
 // Exporter collects Kafka stats from the given server and exports them using
@@ -238,6 +243,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- consumergroupLag
 	ch <- consumergroupLagZookeeper
 	ch <- consumergroupLagSum
+	ch <- consumergroupState
 }
 
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
@@ -469,6 +475,15 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(
 				consumergroupMembers, prometheus.GaugeValue, float64(len(group.Members)), group.GroupId,
 			)
+			for _, state := range states {
+				var isState float64 = 0
+				if group.State == state {
+					isState = 1
+				}
+				ch <- prometheus.MustNewConstMetric(
+					consumergroupState, prometheus.GaugeValue, isState, group.GroupId, group.State,
+				)
+			}
 			start := time.Now()
 			plog.Debugf("[%d][%s]> fetching group offsets", broker.ID(), group.GroupId)
 			if offsetFetchResponse, err := broker.FetchOffset(&offsetFetchRequest); err != nil {
@@ -682,6 +697,12 @@ func main() {
 		prometheus.BuildFQName(namespace, "consumergroup", "members"),
 		"Amount of members in a consumer group",
 		[]string{"consumergroup"}, labels,
+	)
+
+	consumergroupState = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "consumergroup", "state"),
+		"Current state of the consumer group",
+		[]string{"consumergroup", "state"}, labels,
 	)
 
 	if *logSarama {
