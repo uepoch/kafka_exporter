@@ -481,7 +481,7 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) {
 					isState = 1
 				}
 				ch <- prometheus.MustNewConstMetric(
-					consumergroupState, prometheus.GaugeValue, isState, group.GroupId, group.State,
+					consumergroupState, prometheus.GaugeValue, isState, group.GroupId, state,
 				)
 			}
 			start := time.Now()
